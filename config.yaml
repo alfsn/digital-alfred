@@ -1,0 +1,11 @@
+defaults:
+  voice_provider: "elevenlabs"
+  video_provider: "heygen"
+
+assets:
+  voices:
+    alfred_calm: "eleven_uuid_1"
+    alfred_hype: "eleven_uuid_2"
+  avatars:
+    business_suit: "heygen_uuid_1"
+    tan_suit: "heygen_uuid_2"
