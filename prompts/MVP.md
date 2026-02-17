@@ -288,6 +288,8 @@ Phase 1: Setup & Audio (Day 1)
 
     Build CLI for --mode audio.
 
+Phase 2: 
+
     Dependency: Add icontract to pyproject.toml.
 
     Implementation:
@@ -300,7 +302,7 @@ Phase 1: Setup & Audio (Day 1)
 
         Good: PreconditionError: Avatar ID 'tan_suit_v2' is not in the allowed configuration.
 
-Phase 2: Video Integration (Day 2)
+Phase 3: Video Integration (Day 2)
 
     Implement HeyGenAdapter.
 
@@ -308,7 +310,7 @@ Phase 2: Video Integration (Day 2)
 
     Add asset resolution logic (mapping tan_suit -> ID).
 
-Phase 3: Orchestration Readiness (Day 3)
+Phase 4: Orchestration Readiness (Day 3)
 
     Add JSON logging (for the Orchestrator to parse).
 
