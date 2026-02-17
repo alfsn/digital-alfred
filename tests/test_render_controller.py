@@ -9,7 +9,10 @@ def test_render_audio_success(tmp_path):
     mock_provider = MagicMock(spec=IVoiceProvider)
     mock_provider.generate_audio.return_value = tmp_path / "output.mp3"
     
-    controller = RenderController(voice_provider=mock_provider)
+    controller = RenderController(
+        voice_provider=mock_provider, 
+        voice_registry=["alfred_calm"]
+    )
     text = "This is a valid text length."
     result = controller.render_audio(text, "alfred_calm", tmp_path)
     
@@ -18,10 +21,23 @@ def test_render_audio_success(tmp_path):
 
 def test_render_audio_too_short():
     mock_provider = MagicMock(spec=IVoiceProvider)
-    controller = RenderController(voice_provider=mock_provider)
+    controller = RenderController(
+        voice_provider=mock_provider,
+        voice_registry=["alfred_calm"]
+    )
     
     with pytest.raises(ViolationError):
         controller.render_audio("too short", "alfred_calm", Path("/tmp"))
+
+def test_render_audio_invalid_voice():
+    mock_provider = MagicMock(spec=IVoiceProvider)
+    controller = RenderController(
+        voice_provider=mock_provider,
+        voice_registry=["alfred_calm"]
+    )
+    
+    with pytest.raises(ViolationError):
+        controller.render_audio("This is valid text.", "unknown_voice", Path("/tmp"))
 
 def test_render_audio_too_long():
     mock_provider = MagicMock(spec=IVoiceProvider)
