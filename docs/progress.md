@@ -14,4 +14,13 @@
 - [x] Unit tests for `RenderController` with mocks.
 - [x] Verification of `icontract` violations.
 
-## Phase 2: DbC integration and CLI refinement (Status: Next)
+## Phase 2: DbC integration and CLI refinement (Status: Completed)
+
+### Completed:
+- [x] Added `icontract` postconditions to `IVoiceProvider` (file existence and non-zero size).
+- [x] Added asset validation to `RenderController` (ensuring voice alias exists in registry).
+- [x] Implemented CLI using `Typer` in `src/digital_alfred/main.py`.
+- [x] Added human-readable error reporting for contract violations in CLI.
+- [x] Added unit tests for CLI and refined `RenderController` tests.
+
+## Phase 3: HeyGenAdapter with polling and asset mapping (Status: Next)
