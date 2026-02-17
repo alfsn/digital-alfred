@@ -1,0 +1,31 @@
+import pytest
+from unittest.mock import MagicMock
+from pathlib import Path
+from digital_alfred.application.render_controller import RenderController
+from digital_alfred.core.ports.voice_provider import IVoiceProvider
+from icontract import ViolationError
+
+def test_render_audio_success(tmp_path):
+    mock_provider = MagicMock(spec=IVoiceProvider)
+    mock_provider.generate_audio.return_value = tmp_path / "output.mp3"
+    
+    controller = RenderController(voice_provider=mock_provider)
+    text = "This is a valid text length."
+    result = controller.render_audio(text, "alfred_calm", tmp_path)
+    
+    assert result == tmp_path / "output.mp3"
+    mock_provider.generate_audio.assert_called_once()
+
+def test_render_audio_too_short():
+    mock_provider = MagicMock(spec=IVoiceProvider)
+    controller = RenderController(voice_provider=mock_provider)
+    
+    with pytest.raises(ViolationError):
+        controller.render_audio("too short", "alfred_calm", Path("/tmp"))
+
+def test_render_audio_too_long():
+    mock_provider = MagicMock(spec=IVoiceProvider)
+    controller = RenderController(voice_provider=mock_provider)
+    
+    with pytest.raises(ViolationError):
+        controller.render_audio("a" * 4001, "alfred_calm", Path("/tmp"))
