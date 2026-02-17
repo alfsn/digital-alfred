@@ -1,91 +1,4 @@
-Repository Name: digital-alfred
-Technical Design Document: DigitalAlfred v1.0
-
-Author: Principal Software Architect
-Date: February 16, 2026
-Status: Approved for Implementation
-1. Executive Summary
-
-DigitalAlfred is a standalone, CLI-driven microservice responsible for the Productization Layer of the Alfred Invierte content pipeline. It functions as "Worker B" in the broader architecture.
-
-Its single responsibility is to accept a script (text) and a customization configuration, and output a high-fidelity media asset (MP3 audio or MP4 video) featuring the "Alfred" persona.
-
-It adheres to SOLID principles, specifically the Strategy Pattern, to allow hot-swapping of underlying generative providers (e.g., switching from HeyGen to Synthesia, or ElevenLabs to OpenAI Audio) without changing the core business logic.
-2. System Architecture
-
-The system follows a Hexagonal Architecture (Ports and Adapters) to decouple the CLI entry point and external APIs from the core rendering logic.
-2.1 Architectural Layers
-
-    Interface Layer (Primary Adapter):
-
-        CLI (Click/Typer): Handles user input, flags (--mode), and config loading.
-
-    Application Layer (Core):
-
-        RenderController: Orchestrates the validation, rendering, and file saving.
-
-        DTOs: RenderRequest, RenderResult.
-
-    Domain Layer (Ports):
-
-        IAvatarProvider: Interface for video generation.
-
-        IVoiceProvider: Interface for audio generation.
-
-    Infrastructure Layer (Secondary Adapters):
-
-        HeyGenAdapter: Concrete implementation of IAvatarProvider.
-
-        ElevenLabsAdapter: Concrete implementation of IVoiceProvider.
-
-        ConfigLoader: Handles YAML parsing and environment variable injection.
-
-2.2 Class Diagram
-
-classDiagram
-    class RenderRequest {
-        +str text
-        +str output_path
-        +str mode (AUDIO|VIDEO)
-        +dict customization (outfit, background)
-    }
-
-    class RenderController {
-        -IVoiceProvider voice_engine
-        -IAvatarProvider video_engine
-        +execute(request: RenderRequest)
-    }
-
-    %% Ports (Interfaces)
-    class IVoiceProvider {
-        <<interface>>
-        +generate_audio(text, voice_id) Bytes
-    }
-    class IAvatarProvider {
-        <<interface>>
-        +generate_video(text, avatar_id, background_url) JobID
-        +check_status(job_id) URL
-    }
-
-    %% Adapters (Infrastructure)
-    class ElevenLabsAdapter {
-        +api_key
-        +generate_audio()
-    }
-    class HeyGenAdapter {
-        +api_key
-        +generate_video()
-    }
-
-    %% Dependency Injection
-    RenderController --> IVoiceProvider
-    RenderController --> IAvatarProvider
-    IVoiceProvider <|-- ElevenLabsAdapter
-    IAvatarProvider <|-- HeyGenAdapter
-
-     Gemini said
-
-This is the Technical Design Document for DigitalAlfred (Worker B).
+Technical Design Document for DigitalAlfred (Worker B).
 Repository Name: digital-alfred
 Technical Design Document: DigitalAlfred v1.0
 
@@ -171,6 +84,90 @@ classDiagram
     RenderController --> IAvatarProvider
     IVoiceProvider <|-- ElevenLabsAdapter
     IAvatarProvider <|-- HeyGenAdapter
+
+2.3 Reliability & Safety (Design by Contract)
+
+We will strictly enforce constraints using the icontract library (standard for Python DbC).
+Why DbC here?
+
+    Fail Fast (Preconditions): Prevent calling the expensive API if the input is invalid (e.g., text is too long or empty). Saves money.
+
+    Verify Success (Postconditions): Ensure the file actually exists and has content before the CLI exits. Saves debugging time.
+
+    State Sanity (Invariants): Ensure the RenderController never operates without loaded API keys.
+
+Refined Architecture with DbC
+
+We add a "Contract Layer" that wraps our Domain Logic.
+Updated Class Design (Snippet)
+Python
+
+import icontract
+from pathlib import Path
+
+class IAvatarProvider(ABC):
+    
+    @icontract.require(lambda text: len(text) > 0, "Text cannot be empty")
+    @icontract.require(lambda text: len(text) < 4096, "Text exceeds API limit")
+    @icontract.require(lambda output_path: output_path.suffix == ".mp4", "Output must be .mp4")
+    @icontract.ensure(lambda output_path: output_path.exists(), "Output file must exist after execution")
+    @icontract.ensure(lambda output_path: output_path.stat().st_size > 1024, "Output file cannot be empty (<1KB)")
+    @abstractmethod
+    def generate_video(self, text: str, avatar_id: str, output_path: Path) -> None:
+        """
+        Generates a video and saves it to output_path.
+        """
+        pass
+
+Implementation Strategy
+
+Here is how the specific contracts map to your business risks:
+1. The "Wallet Protector" (Preconditions)
+
+These clauses prevent you from sending garbage to the API and getting charged for it.
+
+    Constraint: len(text) > 5
+
+        Reason: Generating a video for "Hi" is a waste of a credit.
+
+    Constraint: avatar_id in VALID_AVATAR_IDS
+
+        Reason: HeyGen API might silently default to a generic avatar if the ID is wrong. We want to crash instead.
+
+    Constraint: customization.background_url is a valid URL.
+
+        Reason: Don't start a 5-minute render job if the background image 404s.
+
+2. The "Pipeline Assurance" (Postconditions)
+
+These clauses ensure the Orchestrator (User) gets exactly what they asked for.
+
+    Constraint: result.duration > 0
+
+        Reason: A video with 0 duration breaks the editor (CapCut/Premiere).
+
+    Constraint: output_file.exists() AND output_file.size > 50kb
+
+        Reason: Sometimes APIs return a "Success" 200 OK but send a corrupt or empty binary stream. We must catch this immediately.
+
+Example: Applying it to the CLI Controller
+
+This ensures that even if you mess up the CLI arguments, the internal logic refuses to execute.
+Python
+
+# In RenderController.py
+
+@icontract.invariant(lambda self: self.api_key is not None)
+class RenderController:
+    
+    def __init__(self, config):
+        self.config = config
+        self.api_key = os.getenv("HEYGEN_KEY")
+
+    @icontract.require(lambda request: request.mode in ["audio", "video"])
+    def execute(self, request: RenderRequest):
+        # Logic...
+        pass
 
 3. Configuration Design (.yaml)
 
@@ -290,6 +287,18 @@ Phase 1: Setup & Audio (Day 1)
     Implement ElevenLabsAdapter.
 
     Build CLI for --mode audio.
+
+    Dependency: Add icontract to pyproject.toml.
+
+    Implementation:
+        Define PreconditionError (Client fault - e.g., bad CLI args).
+        Define PostconditionError (Server/Provider fault - e.g., API sent empty file).
+
+    Benefit: The CLI will output clean, actionable errors:
+
+        Bad: KeyError: 'data'
+
+        Good: PreconditionError: Avatar ID 'tan_suit_v2' is not in the allowed configuration.
 
 Phase 2: Video Integration (Day 2)
 
