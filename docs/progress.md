@@ -23,4 +23,14 @@
 - [x] Added human-readable error reporting for contract violations in CLI.
 - [x] Added unit tests for CLI and refined `RenderController` tests.
 
-## Phase 3: HeyGenAdapter with polling and asset mapping (Status: Next)
+## Phase 3: HeyGenAdapter with polling and asset mapping (Status: Completed)
+
+### Completed:
+- [x] Defined `IAvatarProvider` port with `icontract` (min 50KB size for video).
+- [x] Implemented `HeyGenAdapter` with asynchronous polling logic (30s initial, 10s interval, 10m timeout).
+- [x] Updated `ConfigLoader` to support avatar asset mapping.
+- [x] Updated `RenderController` to orchestrate video generation.
+- [x] Added `video` command to CLI.
+- [x] Added unit tests for video rendering and CLI video command.
+
+## Phase 4: Dockerization and JSON logging for production (Status: Next)
