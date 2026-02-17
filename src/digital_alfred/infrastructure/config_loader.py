@@ -21,6 +21,9 @@ class ConfigLoader:
             raise ValueError(f"Voice alias '{alias}' not found in configuration.")
         return voices[alias]
 
+    def get_available_voices(self) -> list:
+        return list(self.config.get("assets", {}).get("voices", {}).keys())
+
     def get_api_key(self, provider: str) -> str:
         env_var = f"DIGITAL_ALFRED_{provider.upper()}_KEY"
         key = os.getenv(env_var)
